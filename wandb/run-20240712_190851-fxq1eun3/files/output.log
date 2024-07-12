@@ -1,2 +1,0 @@
-
-{'batch_size': 93, 'dropout': 0.5, 'learning_rate': 0.007672902572541507, 'num_filter': 3, 'optimizer': 'sgd'}
