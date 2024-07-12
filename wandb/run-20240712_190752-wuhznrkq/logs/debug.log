@@ -1,0 +1,35 @@
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Current SDK version is 0.17.4
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Configure stats pid to 1075645
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Loading settings from /home/zxr/.config/wandb/settings
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Loading settings from /home/zxr/Documents/Github/Lock_nerf_gan_affordance_map/wandb/settings
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'project': 'pytorch-sweeps-demo', 'entity': 'yincheng-robotics', 'root_dir': '/home/zxr/Documents/Github/Lock_nerf_gan_affordance_map', 'sweep_id': 'e34h9njc', 'run_id': 'wuhznrkq', 'sweep_param_path': '/home/zxr/Documents/Github/Lock_nerf_gan_affordance_map/wandb/sweep-e34h9njc/config-wuhznrkq.yaml'}
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'test.py', 'program_abspath': '/home/zxr/Documents/Github/Lock_nerf_gan_affordance_map/test.py', 'program': '/home/zxr/Documents/Github/Lock_nerf_gan_affordance_map/test.py'}
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_setup.py:_flush():76] Applying login settings: {}
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:_log_setup():529] Logging user logs to /home/zxr/Documents/Github/Lock_nerf_gan_affordance_map/wandb/run-20240712_190752-wuhznrkq/logs/debug.log
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:_log_setup():530] Logging internal logs to /home/zxr/Documents/Github/Lock_nerf_gan_affordance_map/wandb/run-20240712_190752-wuhznrkq/logs/debug-internal.log
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():569] calling init triggers
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():576] wandb.init called with sweep_config: {'batch_size': 127, 'dropout': 0.5, 'learning_rate': 0.08617775657393487, 'num_filter': 5, 'optimizer': 'adam'}
+config: {}
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():619] starting backend
+2024-07-12 19:07:52,753 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():623] setting up manager
+2024-07-12 19:07:52,757 INFO    Thread-7 (_run_job):1075645 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2024-07-12 19:07:52,759 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():631] backend started and connected
+2024-07-12 19:07:52,766 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_config_callback():1382] config_cb None None {'batch_size': 127, 'dropout': 0.5, 'learning_rate': 0.08617775657393487, 'num_filter': 5, 'optimizer': 'adam'}
+2024-07-12 19:07:52,766 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():720] updated telemetry
+2024-07-12 19:07:52,769 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2024-07-12 19:07:53,503 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_on_init():2402] communicating current version
+2024-07-12 19:07:54,401 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_on_init():2411] got version response 
+2024-07-12 19:07:54,401 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():804] starting run threads in backend
+2024-07-12 19:07:55,916 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_console_start():2380] atexit reg
+2024-07-12 19:07:55,917 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_redirect():2235] redirect: wrap_raw
+2024-07-12 19:07:55,917 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_redirect():2300] Wrapping output streams.
+2024-07-12 19:07:55,917 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_redirect():2325] Redirects installed.
+2024-07-12 19:07:55,918 INFO    Thread-7 (_run_job):1075645 [wandb_init.py:init():847] run started, returning control to user process
+2024-07-12 19:07:55,918 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_finish():2109] finishing run yincheng-robotics/pytorch-sweeps-demo/wuhznrkq
+2024-07-12 19:07:55,918 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_atexit_cleanup():2349] got exitcode: 0
+2024-07-12 19:07:55,918 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_restore():2332] restore
+2024-07-12 19:07:55,918 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_restore():2338] restore done
+2024-07-12 19:08:00,921 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_footer_history_summary_info():3991] rendering history
+2024-07-12 19:08:00,921 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_footer_history_summary_info():4023] rendering summary
+2024-07-12 19:08:00,925 INFO    Thread-7 (_run_job):1075645 [wandb_run.py:_footer_sync_info():3950] logging synced files

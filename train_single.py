@@ -17,6 +17,7 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 
 import curriculums as curriculums
+import wandb_cofig_lock as wandb_config
 import datasets as datasets
 import pytorch_ssim
 from discriminators import discriminators_con as discriminators
@@ -59,7 +60,7 @@ def torch_save_atomic(what, path):
     os.rename(path_tmp, path)
 
 
-def train(world_size, opt):
+def train(opt):
     torch.cuda.empty_cache()
 
     torch.manual_seed(0)
@@ -68,6 +69,20 @@ def train(world_size, opt):
 
     curriculum = getattr(curriculums, opt.curriculum)
     metadata = curriculums.extract_metadata(curriculum, 0)
+
+    if opt.wandb_name != '':
+        wandb.init(
+            project=opt.wandb_project,
+            resume=True,
+            entity=opt.wandb_entity if opt.wandb_entity != '' else None,
+            name=opt.wandb_name,
+            # id=wandb.util.generate_id(),
+            # id=opt.wandb_name,
+            dir=opt.output_dir,
+            save_code=False,
+        )
+        config = wandb.config
+        print(config)
 
     fixed_z = z_sampler((3, metadata['latent_dim']), device='cpu', dist=metadata['z_dist'])
 
@@ -186,21 +201,8 @@ def train(world_size, opt):
     total_progress_bar.update(discriminator.epoch)
     interior_step_bar = tqdm(dynamic_ncols=True)
 
-    if opt.wandb_name != '':
-        # os.environ['WANDB_START_METHOD'] = 'thread'  # hack: https://github.com/wandb/client/issues/1771#issuecomment-859670559
-        # os.environ['WANDB_API_KEY'] = "8031681f7700ff09e8138e11066dfe69e7f2f40f"
-        # wandb.login(key="8031681f7700ff09e8138e11066dfe69e7f2f40f")
-        wandb.init(
-            project=opt.wandb_project,
-            resume=True,
-            entity=opt.wandb_entity if opt.wandb_entity != '' else None,
-            name=opt.wandb_name,
-            id=wandb.util.generate_id(),
-            # id=opt.wandb_name,
-            dir=opt.output_dir,
-            save_code=False,
-        )
-        print(opt)
+    
+    
 
     for _ in range(opt.n_epochs):
         total_progress_bar.update(1)
@@ -598,15 +600,13 @@ def train(world_size, opt):
         discriminator.epoch += 1
         generator.epoch += 1
 
-
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=3000, help="number of epochs of training")
     parser.add_argument("--sample_interval", type=int, default=1000, help="interval between image sampling")
-    parser.add_argument('--output_dir', type=str, default='debug')
+    parser.add_argument('--output_dir', type=str, default='output')
     parser.add_argument('--load_dir', type=str, default='')
-    parser.add_argument('--curriculum', type=str, required=True)
+    parser.add_argument('--curriculum', type=str, default='lock', required=True)
     parser.add_argument('--eval_freq', type=int, default=5000)
     parser.add_argument('--port', type=str, default='12354')
     parser.add_argument('--set_step', type=int, default=None)
@@ -615,30 +615,37 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_name', type=str, default='lock')
     parser.add_argument('--wandb_entity', type=str, default='yincheng-robotics')
     parser.add_argument('--wandb_project', type=str, default='lock')
-    parser.add_argument('--recon_lambda', type=float, required=True)
-    parser.add_argument('--ssim_lambda', type=float, required=True)
-    parser.add_argument('--vgg_lambda', type=float, required=True)
-    parser.add_argument('--dataset_dir', type=str, required=True)
-    parser.add_argument('--pos_lambda_gen', type=float, required=True)
+    parser.add_argument('--recon_lambda', type=float, default=5, required=True)
+    parser.add_argument('--ssim_lambda', type=float, default=1, required=True)
+    parser.add_argument('--vgg_lambda', type=float, default=1, required=True)
+    parser.add_argument('--dataset_dir', type=str, default='data/lock/*.jpg', required=True)
+    parser.add_argument('--pos_lambda_gen', type=float, default=15, required=True)
     parser.add_argument('--sn', type=int, default=0, required=False)
-    parser.add_argument('--lambda_e_latent', type=float, required=True)
-    parser.add_argument('--lambda_e_pos', type=float, required=True)
-    parser.add_argument('--encoder_type', type=str, required=True)
-    parser.add_argument('--cond_lambda', type=float, required=True)
+    parser.add_argument('--lambda_e_latent', type=float, default=1, required=True)
+    parser.add_argument('--lambda_e_pos', type=float, default=1, required=True)
+    parser.add_argument('--encoder_type', type=str, default='CCS', required=True)
+    parser.add_argument('--cond_lambda', type=float, default=1, required=True)
     parser.add_argument('--ema', type=int, default=1, required=False)
     parser.add_argument('--load_encoder', type=int, default=1, required=False)
-
-
-
     opt = parser.parse_args()
-    # if os.path.exists(os.path.join(opt.output_dir, 'checkpoint_train.pth')):
-    #     opt.load_dir = opt.output_dir
-    # else:
-    #     os.makedirs(opt.output_dir, exist_ok=True)
     print(opt)
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     num_gpus = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
     assert num_gpus > 0, 'No GPUs found'
-    train(num_gpus, opt)
+    with wandb.init():
+        config = wandb.config
+        print(config)
+    
+    
+
+
+
+
+if __name__ == '__main__':
+    wandb_entity = 'yincheng-robotics'
+    wandb_project = 'lock'
+    agent_num = 50
+    sweep_id = wandb.sweep(wandb_config.sweep_config, wandb_entity, wandb_project)
+    wandb.agent(sweep_id, main(), wandb_entity, wandb_project, agent_num)
 
     wandb.finish()

@@ -1,0 +1,12 @@
+wandb_version: 1
+
+batch_size:
+  value: 208
+dropout:
+  value: 0.5
+learning_rate:
+  value: 0.02734093337637862
+num_filter:
+  value: 4
+optimizer:
+  value: adam
