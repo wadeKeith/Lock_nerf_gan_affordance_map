@@ -587,6 +587,9 @@ def train(opt,config):
 
             discriminator.step += 1
             generator.step += 1
+            # torch.nan_to_num
+            total_loss = torch.nansum(torch.cat([torch.tensor(encoder_losses).mean().unsqueeze(0), torch.tensor(generator_losses).mean().unsqueeze(0), torch.tensor(discriminator_losses).mean().unsqueeze(0)],dim=-1))
+            wandb.log({"total_loss": total_loss.item()})
         discriminator.epoch += 1
         generator.epoch += 1
 
@@ -619,20 +622,19 @@ def main():
     parser.add_argument('--load_encoder', type=int, default=1)
     opt = parser.parse_args()
     # print(opt)
-    # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    # num_gpus = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
-    # assert num_gpus > 0, 'No GPUs found'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    num_gpus = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
+    assert num_gpus > 0, 'No GPUs found'
     wandb.init(
-        project=opt.wandb_project,
-        resume=True,
-        entity=opt.wandb_entity if opt.wandb_entity != '' else None,
+        # project=opt.wandb_project,
+        # resume=True,
+        # entity=opt.wandb_entity if opt.wandb_entity != '' else None,
         name=opt.wandb_name,
-        id=wandb.util.generate_id(),
+        # id=wandb.util.generate_id(),
         # id=opt.wandb_name,
         dir=opt.output_dir,
         save_code=False,
     )
-    # wandb.init()
     config = wandb.config
     train(opt,config)
     # print(config)

@@ -3,7 +3,9 @@ import math
 
 # 超参数搜索方法，可以选择：grid random bayes
 sweep_config = {
-    'method': 'random'
+    'method': 'random',
+    "name": "lock_sweep",
+    "metric": {"goal": "minimize", "name": "total_loss"}
     }
 
 # 参数范围

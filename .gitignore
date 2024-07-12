@@ -1,0 +1,8 @@
+*.png
+*.log
+*.json
+*.yaml
+*.wandb
+*.txt
+*.pth
+*.pyc
