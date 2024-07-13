@@ -633,8 +633,9 @@ def train(rank, world_size, opt,config):
             discriminator.step += 1
             generator.step += 1
             # torch.nan_to_num
-            total_loss = torch.nansum(torch.cat([torch.tensor(encoder_losses).mean().unsqueeze(0), torch.tensor(generator_losses).mean().unsqueeze(0), torch.tensor(discriminator_losses).mean().unsqueeze(0)],dim=-1))
-            wandb.log({"total_loss": total_loss.item()})
+            if rank ==0:
+                total_loss = torch.nansum(torch.cat([torch.tensor(encoder_losses).mean().unsqueeze(0), torch.tensor(generator_losses).mean().unsqueeze(0), torch.tensor(discriminator_losses).mean().unsqueeze(0)],dim=-1))
+                wandb.log({"total_loss": total_loss.item()})
         discriminator.epoch += 1
         generator.epoch += 1
 
