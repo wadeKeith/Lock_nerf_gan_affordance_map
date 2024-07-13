@@ -32,9 +32,27 @@ import random
 
 random.seed(0)
 WANDB_UPLOAD_IMAGES = True
+DDP_FIND_UNUSED_PARAM = True
+
+def rmlock(log_dir):
+    file_lock = os.path.join(log_dir, 'process_group_sync.lock')
+    if os.path.isfile(file_lock):
+        print('Removed lock')
+        os.remove(file_lock)
+    else:
+        print('Lock not found')
 
 
+def setup(rank, world_size, port, log_dir):
+    os.makedirs(log_dir, exist_ok=True)
+    file_lock = f'file://home/zxr/Documents/Github/Pix2NeRF/{log_dir}/process_group_sync.lock'
+    dist.init_process_group('nccl', init_method=None, rank=rank, world_size=world_size) # gloo
+    torch.cuda.set_device(rank)
 
+
+def cleanup():
+    dist.destroy_process_group()
+    wandb.finish()
 
 def load_images(images, curriculum, device):
     return_images = []
@@ -61,12 +79,13 @@ def torch_save_atomic(what, path):
     os.rename(path_tmp, path)
 
 
-def train(opt,config):
+def train(rank, world_size, opt,config):
     torch.cuda.empty_cache()
 
     torch.manual_seed(0)
 
-    device = torch.device(0) # "cuda" if torch.cuda.is_available() else "cpu"
+    setup(rank, world_size, opt.port, opt.output_dir)
+    device = torch.device(rank) # "cuda" if torch.cuda.is_available() else "cpu"
 
     curriculum = getattr(curriculums, opt.curriculum)
     metadata = curriculums.extract_metadata(curriculum, 0)
@@ -136,18 +155,38 @@ def train(opt,config):
             ema = ExponentialMovingAverage(generator.parameters(), decay=0.999)
             ema_encoder = ExponentialMovingAverage(encoder.parameters(), decay=0.999)
 
+    generator_ddp = DDP(
+        generator,
+        device_ids=[rank],
+        find_unused_parameters=DDP_FIND_UNUSED_PARAM
+    )
+    discriminator_ddp = DDP(
+        discriminator,
+        device_ids=[rank],
+        find_unused_parameters=DDP_FIND_UNUSED_PARAM,
+        broadcast_buffers=False
+    )
+    encoder_ddp = DDP(
+        encoder,
+        device_ids=[rank],
+        find_unused_parameters=DDP_FIND_UNUSED_PARAM
+    )
+    generator = generator_ddp.module
+    discriminator = discriminator_ddp.module
+    encoder = encoder_ddp.module
+
     if metadata.get('unique_lr', False):
-        mapping_network_param_names = [name for name, _ in generator.siren.mapping_network.named_parameters()]
-        mapping_network_parameters = [p for n, p in generator.named_parameters() if n in mapping_network_param_names]
-        generator_parameters = [p for n, p in generator.named_parameters() if n not in mapping_network_param_names]
+        mapping_network_param_names = [name for name, _ in generator_ddp.module.siren.mapping_network.named_parameters()]
+        mapping_network_parameters = [p for n, p in generator_ddp.named_parameters() if n in mapping_network_param_names]
+        generator_parameters = [p for n, p in generator_ddp.named_parameters() if n not in mapping_network_param_names]
         optimizer_G = torch.optim.Adam([{'params': generator_parameters, 'name': 'generator'},
                                         {'params': mapping_network_parameters, 'name': 'mapping_network', 'lr':metadata['gen_lr']*5e-2}],
                                        lr=metadata['gen_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
     else:
-        optimizer_G = torch.optim.Adam(generator.parameters(), lr=metadata['gen_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
+        optimizer_G = torch.optim.Adam(generator_ddp.parameters(), lr=metadata['gen_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
 
-    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=metadata['disc_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
-    optimizer_E = torch.optim.Adam(encoder.parameters(), lr=metadata['enc_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
+    optimizer_D = torch.optim.Adam(discriminator_ddp.parameters(), lr=metadata['disc_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
+    optimizer_E = torch.optim.Adam(encoder_ddp.parameters(), lr=metadata['enc_lr'], betas=metadata['betas'], weight_decay=metadata['weight_decay'])
 
     if opt.load_dir != '':
         optimizer_G.load_state_dict(checkpoint['optimizer_G.pth'])
@@ -183,7 +222,7 @@ def train(opt,config):
         f.write('\n\n')
         f.write(str(curriculum))
 
-    torch.manual_seed(0)
+    torch.manual_seed(rank)
     dataloader = None
     step_last_upsample = None
     total_progress_bar = tqdm(total = opt.n_epochs, desc = "Total progress", dynamic_ncols=True)
@@ -598,7 +637,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=3000, help="number of epochs of training")
     parser.add_argument("--sample_interval", type=int, default=1000, help="interval between image sampling")
-    parser.add_argument('--output_dir', type=str, default='output')
+    parser.add_argument('--output_dir', type=str, default='output_dis')
     parser.add_argument('--load_dir', type=str, default='')
     parser.add_argument('--curriculum', type=str, default='lock')
     parser.add_argument('--eval_freq', type=int, default=5000)
@@ -606,9 +645,9 @@ def main():
     parser.add_argument('--set_step', type=int, default=None)
     parser.add_argument('--model_save_interval', type=int, default=200)
     parser.add_argument('--pretrained_dir', type=str, default='')
-    parser.add_argument('--wandb_name', type=str, default='lock')
+    parser.add_argument('--wandb_name', type=str, default='lock_dis')
     parser.add_argument('--wandb_entity', type=str, default='yincheng-robotics')
-    parser.add_argument('--wandb_project', type=str, default='lock')
+    parser.add_argument('--wandb_project', type=str, default='lock_dis')
     parser.add_argument('--recon_lambda', type=float, default=5)
     parser.add_argument('--ssim_lambda', type=float, default=1)
     parser.add_argument('--vgg_lambda', type=float, default=1)
@@ -622,10 +661,14 @@ def main():
     parser.add_argument('--ema', type=int, default=1)
     parser.add_argument('--load_encoder', type=int, default=1)
     opt = parser.parse_args()
-    # print(opt)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    # if os.path.exists(os.path.join(opt.output_dir, 'checkpoint_train.pth')):
+    #     opt.load_dir = opt.output_dir
+    # else:
+    #     os.makedirs(opt.output_dir, exist_ok=True)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
     num_gpus = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
     assert num_gpus > 0, 'No GPUs found'
+    # rmlock(opt.output_dir)
     wandb.init(
         # project=opt.wandb_project,
         # resume=True,
@@ -637,9 +680,7 @@ def main():
         save_code=False,
     )
     config = wandb.config
-    train(opt,config)
-    # print(config)
-    
+    mp.spawn(train, args=(num_gpus, opt, config), nprocs=num_gpus, join=True)
     
 
 
@@ -652,4 +693,5 @@ if __name__ == '__main__':
     sweep_id = wandb.sweep(wandb_config.sweep_config, wandb_entity, wandb_project)
     wandb.agent(sweep_id, main, wandb_entity, wandb_project, agent_num)
 
-    wandb.finish()
+    
+    cleanup()
