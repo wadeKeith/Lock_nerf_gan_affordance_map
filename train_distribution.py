@@ -687,7 +687,7 @@ if __name__ == '__main__':
     parser.add_argument('--load_encoder', type=int, default=1)
     opt = parser.parse_args()
     # print(opt)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
     num_gpus = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
     assert num_gpus > 0, 'No GPUs found'
     
