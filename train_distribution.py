@@ -33,6 +33,8 @@ import random
 random.seed(0)
 WANDB_UPLOAD_IMAGES = True
 DDP_FIND_UNUSED_PARAM = True
+os.environ['MASTER_ADDR'] = 'localhost'
+os.environ['MASTER_PORT'] = '12345' 
 
 
 
@@ -48,7 +50,7 @@ def rmlock(log_dir):
 def setup(rank, world_size, port, log_dir):
     os.makedirs(log_dir, exist_ok=True)
     file_lock = f'file://home/zxr/Documents/Github/Pix2NeRF/{log_dir}/process_group_sync.lock'
-    dist.init_process_group('gloo', rank=rank, world_size=world_size) # gloo init_method=None
+    dist.init_process_group('nccl', rank=rank, world_size=world_size) # gloo init_method=None
     torch.cuda.set_device(rank)
 
 
@@ -82,7 +84,7 @@ def torch_save_atomic(what, path):
     os.rename(path_tmp, path)
 
 
-def train(rank, world_size, opt,config):
+def train(rank, world_size, opt):
     torch.cuda.empty_cache()
 
     torch.manual_seed(0)
@@ -92,7 +94,7 @@ def train(rank, world_size, opt,config):
 
     curriculum = getattr(curriculums, opt.curriculum)
     metadata = curriculums.extract_metadata(curriculum, 0)
-    metadata.update(config)
+    # metadata.update(config)
 
 
     fixed_z = z_sampler((3, metadata['latent_dim']), device='cpu', dist=metadata['z_dist'])
@@ -232,14 +234,26 @@ def train(rank, world_size, opt,config):
     total_progress_bar.update(discriminator.epoch)
     interior_step_bar = tqdm(dynamic_ncols=True)
 
-    
+    if rank == 0 and opt.wandb_name != '':
+        os.environ['WANDB_START_METHOD'] = 'thread'  # hack: https://github.com/wandb/client/issues/1771#issuecomment-859670559
+        wandb.init(
+            project=opt.wandb_project,
+            resume=True,
+            entity=opt.wandb_entity if opt.wandb_entity != '' else None,
+            name=opt.wandb_name,
+            id=wandb.util.generate_id(),
+            # id=opt.wandb_name,
+            dir=opt.output_dir,
+            save_code=False,
+        )
+        # print(opt)
     
 
     for _ in range(opt.n_epochs):
         total_progress_bar.update(1)
 
         metadata = curriculums.extract_metadata(curriculum, discriminator.step)
-        metadata.update(config)
+        # metadata.update(config)
 
         # Set learning rates
         for param_group in optimizer_G.param_groups:
@@ -642,15 +656,17 @@ def train(rank, world_size, opt,config):
     cleanup()
 
 
-def main():
+
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=3000, help="number of epochs of training")
     parser.add_argument("--sample_interval", type=int, default=1000, help="interval between image sampling")
     parser.add_argument('--output_dir', type=str, default='output_dis')
     parser.add_argument('--load_dir', type=str, default='')
-    parser.add_argument('--curriculum', type=str, default='lock')
+    parser.add_argument('--curriculum', type=str, default='lock_dis')
     parser.add_argument('--eval_freq', type=int, default=5000)
-    parser.add_argument('--port', type=str, default='12354')
+    parser.add_argument('--port', type=str, default='12345')
     parser.add_argument('--set_step', type=int, default=None)
     parser.add_argument('--model_save_interval', type=int, default=200)
     parser.add_argument('--pretrained_dir', type=str, default='')
@@ -671,34 +687,10 @@ def main():
     parser.add_argument('--load_encoder', type=int, default=1)
     opt = parser.parse_args()
     # print(opt)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     num_gpus = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
     assert num_gpus > 0, 'No GPUs found'
-    os.environ['WANDB_START_METHOD'] = 'thread'  # hack: https://github.com/wandb/client/issues/1771#issuecomment-859670559
-    wandb.init(
-        # project=opt.wandb_project,
-        # resume=True,
-        # entity=opt.wandb_entity if opt.wandb_entity != '' else None,
-        name=opt.wandb_name,
-        # id=wandb.util.generate_id(),
-        # id=opt.wandb_name,
-        dir=opt.output_dir,
-        save_code=False,
-    )
-    config = wandb.config
-    mp.spawn(train, args=(num_gpus, opt, config), nprocs=num_gpus, join=True)
-    cleanup()
     
-    
-
-
-
-
-if __name__ == '__main__':
-    wandb_entity = 'yincheng-robotics'
-    wandb_project = 'lock-dis'
-    agent_num = 5
-    sweep_id = wandb.sweep(wandb_config.sweep_config, wandb_entity, wandb_project)
-    wandb.agent(sweep_id, main, wandb_entity, wandb_project, agent_num)
+    mp.spawn(train, args=(num_gpus, opt), nprocs=num_gpus, join=True)
 
     cleanup()
