@@ -176,7 +176,7 @@ def sample_camera_positions(device, n=1, r=1, horizontal_stddev=1, vertical_stdd
         phi = vertical_mean
 
     elif mode == 'lock':
-        theta = (torch.rand((n, 1), device=device) - .5) * 2 * horizontal_stddev
+        theta = (torch.rand((n, 1), device=device) - .5) * 2 * horizontal_stddev+ horizontal_mean
         v_stddev, v_mean = vertical_stddev / math.pi, vertical_mean / math.pi
         v = ((torch.rand((n,1), device=device) - .5) * 2 * v_stddev + v_mean)
         v = torch.clamp(v, 1e-5, 1 - 1e-5)

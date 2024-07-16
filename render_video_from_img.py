@@ -67,16 +67,16 @@ inv_normalize = transforms.Normalize(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', type=str, default='')
-    parser.add_argument('--output_dir', type=str, default='')
+    parser.add_argument('--path', type=str, default='output/checkpoint_train.pth')
+    parser.add_argument('--output_dir', type=str, default='output')
     parser.add_argument('--max_batch_size', type=int, default=600000)
     parser.add_argument('--lock_view_dependence', action='store_true')
-    parser.add_argument('--image_size', type=int, default=128)
-    parser.add_argument('--ray_steps', type=int, default=96)
-    parser.add_argument('--curriculum', type=str, default='celeba')
-    parser.add_argument('--trajectory', type=str, default='front')
-    parser.add_argument('--num_frames', type=int, default=64)
-    parser.add_argument('--img_path', type=str, default='')
+    parser.add_argument('--image_size', type=int, default=512)
+    parser.add_argument('--ray_steps', type=int, default=192)
+    parser.add_argument('--curriculum', type=str, default='lock_dis')
+    parser.add_argument('--trajectory', type=str, default='orbit')
+    parser.add_argument('--num_frames', type=int, default=128)
+    parser.add_argument('--img_path', type=str, default='data/lock/lock200.jpg')
     opt = parser.parse_args()
 
     curriculum = getattr(curriculums, opt.curriculum)
@@ -109,15 +109,15 @@ if __name__ == '__main__':
         for t in np.linspace(0, 1, opt.num_frames):
             pitch = 0.2 * np.cos(t * 2 * math.pi) + math.pi/2
             yaw = 0.4 * np.sin(t * 2 * math.pi) + math.pi/2
-            fov = 12
+            fov = 50
             # fov = 12 + 5 + np.sin(t * 2 * math.pi) * 5
 
             trajectory.append((pitch, yaw, fov))
     elif opt.trajectory == 'orbit':
         trajectory = []
         for t in np.linspace(0, 1, opt.num_frames):
-            pitch = math.pi/4
-            yaw = t * 2 * math.pi
+            pitch = math.pi/4 * 85/90
+            yaw = (t * 2 * math.pi-math.pi)/4
             fov = curriculum['fov']
 
             trajectory.append((pitch, yaw, fov))
@@ -142,13 +142,16 @@ if __name__ == '__main__':
             transforms.Resize((64, 64), interpolation=0),
             transforms.Normalize([0.5], [0.5])
         ])
+    if opt.curriculum == 'lock_dis':
+        this_transform = transforms.Compose(
+                    [transforms.Resize((64, 64), interpolation=0), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
 
     this_img = PIL.Image.open(opt.img_path)
     this_img = this_transform(this_img)[:3]
     frames = []
     z, pos = encoder(this_img.unsqueeze(0).to(device), alpha=1.0)
     output_name = 'video.mp4'
-    writer = skvideo.io.FFmpegWriter(os.path.join(opt.output_dir, output_name), outputdict={'-pix_fmt': 'yuv420p', '-crf': '21'})
+    writer = skvideo.io.FFmpegWriter(os.path.join(opt.output_dir, output_name), outputdict={'-pix_fmt': 'yuv420p','-r':'20'}) #
     for pitch, yaw, fov in tqdm(trajectory):
         curriculum_copy = copy.deepcopy(curriculum)
         curriculum_copy['h_mean'] = yaw
