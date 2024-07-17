@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--curriculum', type=str, default='lock_dis')
     parser.add_argument('--trajectory', type=str, default='orbit')
     parser.add_argument('--num_frames', type=int, default=128)
-    parser.add_argument('--img_path', type=str, default='data/lock/lock200.jpg')
+    parser.add_argument('--img_path', type=str, default='data/lock/lock2262.jpg')
     opt = parser.parse_args()
 
     curriculum = getattr(curriculums, opt.curriculum)
